@@ -1,0 +1,168 @@
+/* Includes ------------------------------------------------------------------*/
+# include "stm32f4xx.h"
+# include "stdio.h"
+/* End of Includes -----------------------------------------------------------*/
+
+/* Declare Function ----------------------------------------------------------*/
+void USART2_Configuration(void);
+void GPIO_Configuration(void);
+void TIM_Configuration(void);
+/* End of Declare Functions --------------------------------------------------*/
+
+/* Override function ---------------------------------------------------------*/
+int fputc(int ch, FILE * f) {
+  USART_SendData(USART2, (unsigned char)ch);
+  while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);
+  return ch;
+}
+/* End of Override function --------------------------------------------------*/
+
+/* System Delay --------------------------------------------------------------*/
+volatile uint32_t msTicks; // counts 1ms timeTicks
+
+void SysTick_Handler(void) {
+  msTicks++;
+}
+
+void Delay (uint32_t dlyTicks) {
+  uint32_t curTicks;
+
+  curTicks = msTicks;
+  while ((msTicks - curTicks) < dlyTicks) {
+    __NOP();
+  }
+}
+/* End of System Delay -------------------------------------------------------*/
+
+/* Global Variables ----------------------------------------------------------*/
+volatile uint32_t CCR1_Val=0;
+volatile uint32_t CCR2_Val=0;
+volatile uint32_t CCR3_Val=0;
+volatile uint32_t CCR4_Val=0;
+/* End of Global Variables ---------------------------------------------------*/
+
+/* main ----------------------------------------------------------------------*/
+int main(void) {
+  USART2_Configuration();
+  GPIO_Configuration();
+  TIM_Configuration();
+	
+  SysTick_Config(SystemCoreClock / 1000); // SysTick 1 msec interrupts
+	int i;
+  char c;
+  while (1) {
+    Delay(10);
+    if (USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)
+      c = USART_ReceiveData(USART2);
+      switch (c) {
+        case '0':
+          if (CCR1_Val > 255)
+						CCR1_Val=0;
+						CCR1_Val++;
+					else
+						CCR1_Val -=8;
+          TIM_SetCompare1(TIM2, CCR1_Val);
+          break;
+				case '1':
+          if (CCR1_Val > 255)
+						CCR1_Val = 0;
+          CCR1_Val +=8;
+          TIM_SetCompare1(TIM2, CCR1_Val);
+          break;
+        default:
+          ;
+    }
+  }
+}
+/* End of main ---------------------------------------------------------------*/
+
+/* Functions -----------------------------------------------------------------*/
+void GPIO_Configuration(void) {
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+
+  GPIO_InitTypeDef GPIO_InitStructure;
+
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_5;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource0, GPIO_AF_TIM2);
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource1, GPIO_AF_TIM2);
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource5, GPIO_AF_TIM2);
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+}
+
+void TIM_Configuration(void) {
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+
+  TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+  TIM_OCInitTypeDef TIM_OCInitStructure;
+  TIM_TimeBaseStructure.TIM_Period = 255;
+  TIM_TimeBaseStructure.TIM_Prescaler = 0;
+  TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+  TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+  TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
+
+  TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+  TIM_OCInitStructure.TIM_Pulse = CCR1_Val;
+  TIM_OC1Init(TIM2, &TIM_OCInitStructure);
+  TIM_OCInitStructure.TIM_Pulse = CCR2_Val;
+  TIM_OC2Init(TIM2, &TIM_OCInitStructure);
+  TIM_OCInitStructure.TIM_Pulse = CCR3_Val;
+  TIM_OC3Init(TIM2, &TIM_OCInitStructure);
+  TIM_OCInitStructure.TIM_Pulse = CCR4_Val;
+  TIM_OC4Init(TIM2, &TIM_OCInitStructure);
+
+  TIM_OC1PreloadConfig(TIM2, TIM_OCPreload_Enable);
+  TIM_OC2PreloadConfig(TIM2, TIM_OCPreload_Enable);
+  TIM_OC3PreloadConfig(TIM2, TIM_OCPreload_Enable);
+  TIM_OC4PreloadConfig(TIM2, TIM_OCPreload_Enable);
+  TIM_ARRPreloadConfig(TIM2, ENABLE);
+
+  TIM_Cmd(TIM2, ENABLE);
+}
+
+void USART2_Configuration(void) {
+  /* Declare Structure of USART and GPIO  */
+  USART_InitTypeDef USART_InitStructure;
+  GPIO_InitTypeDef GPIO_InitStructure;
+
+  /* Enable RCC Clock of GPIOA and USART2  */
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+
+  /* Set PA2 and PA3 for USART*/
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_USART2);
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_USART2);
+
+  /* Configure USART2 Tx (PA.02) as alternate function push-pull */
+  /* Configure USART2 Rx (PA.03) as input floating */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; //GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //GPIO_PuPd_UP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  /* Set USART2 Paramter Configuration */
+  USART_InitStructure.USART_BaudRate = 115200;
+  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+  USART_InitStructure.USART_StopBits = USART_StopBits_1;
+  USART_InitStructure.USART_Parity = USART_Parity_No ;
+  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+  USART_Init(USART2, &USART_InitStructure);
+
+  /* Enable USARTy Receive and Transmit interrupts */
+  USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+
+  /* Enable USART2 */
+  USART_Cmd(USART2, ENABLE);
+}
+/* End of Functions ---------------------------------------------------------------*/
+
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

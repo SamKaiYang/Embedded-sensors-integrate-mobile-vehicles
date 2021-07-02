@@ -1,0 +1,102 @@
+# include "stm32f4xx.h"
+
+# include "stdlib.h"
+# include "user_usart.h"
+
+int main(void) {
+  Serial2_begin(115200);
+	int n, i, j, random_array[6];
+	
+  while (1) {
+    printf("Command List:\n");
+    printf("\t0 : print \"TAIPEI\"\n");
+    printf("\t1 : print \"TKU\"\n");
+    printf("\t2 : print \"Hello World!\"\n");
+    printf("\t3 : print \"1~5 Pyramid\"\n");
+    printf("\t4 : print \"Your name 10 times\"\n");
+    printf("\t5 : print \"Even number between 0 and 20\"\n");
+    printf("\t6 : print \"Random number between 0 and 15\"\n");
+    printf("\t7 : other commands...\n");
+    printf("Please enter your command: ");
+    scanf("%d", &n);
+    switch (n) {
+      case 0:
+        printf("TAIPEI\n");
+        break;
+      case 1:
+        printf("TKU\n");
+        break;
+      case 2:
+        printf("Hello World!\n");
+        break;
+      case 3:
+        for (i = 1; i < 6; i++) {
+          for (j = 1; j < 6; j++) {
+            if (i >= j)
+              printf("%d ", j);
+          }
+          printf("\n");
+        }
+        break;
+      case 4:
+        for (i = 0; i < 10; i++)
+          printf("Your Name(%d)\n", i);
+        break;
+      case 5:
+        for (i = 0; i < 21; i++)
+          if (i % 2 == 0)
+            printf("%d ", i);
+        printf("\n");
+        break;
+      case 6:
+        random_array[0] = rand()%15+1;
+        for (i=1; i < 6 ;) {
+          int k = rand()%15+1;
+          for (j = 0; j < i; j++)
+            if (k == random_array[j])
+              break;
+          if (j == i) {
+            random_array[i] = k;
+            i++;
+          }
+        }
+				for (i=0; i<6; i++)
+						printf("%d ", random_array[i]);
+        printf("\n");
+        break;
+      case 7:
+        while (1) {
+          if (i == 0)
+            break;
+          printf("Other Command List:\n");
+          printf("\t0 : back to command list.\n");
+          printf("\t1 : input \"Integer\" and echo.\n");
+          printf("\t2 : input \"Float\" and echo.\n");
+          printf("\t3 : input \"String\" and echo.\n");
+          printf("Please enter your command: ");
+          scanf("%d", &i);
+          switch (i) {
+            case 1:
+              printf("Please enter a Integer:");
+              scanf("%d", &i);
+              printf("Echo the Integer: %d\n", i);
+              break;
+            case 2:
+              printf("Please enter a Float:");
+              scanf("%f", &f);
+              printf("Echo the Float: %f\n", f);
+              break;
+            case 3:
+              printf("Please enter a String:");
+              scanf("%s", s);
+              printf("Echo the String: %s\n", s);
+              break;
+            default:
+              ;
+          }
+        }
+      default:
+        ;
+    }
+  }
+}
